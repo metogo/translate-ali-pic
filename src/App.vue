@@ -38,26 +38,32 @@ const translatedImages = ref([])
 const isTranslating = ref(false)
 
 const handleFileUpload = async (event) => {
-  const files = event.target.files
-  const formData = new FormData()
+  const files = event.target.files;
+  
+  if (files.length > 50) {
+    ElMessage.error('一次最多只能上传50张图片');
+    return;
+  }
+
+  const formData = new FormData();
 
   for (let file of files) {
     if (!file.type.startsWith('image/')) {
-      ElMessage.error('请只上传图片文件')
-      continue
+      ElMessage.error('请只上传图片文件');
+      continue;
     }
-    formData.append('images', file)
+    formData.append('images', file);
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (e) => {
       imageList.value.push({
         original: e.target.result,
         name: file.name,
         translated: null,
         status: 'pending' // pending, translating, done, error
-      })
-    }
-    reader.readAsDataURL(file)
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
   try {
@@ -191,7 +197,7 @@ const getFileExtension = (filename) => {
       <label for="file-input" class="upload-label">
         <i class="el-icon-upload"></i>
         <span>点击或拖拽图片到这里</span>
-        <span class="upload-hint">支持多张图片上传</span>
+        <span class="upload-hint">支持多张图片上传（最多50张）</span>
       </label>
     </div>
 

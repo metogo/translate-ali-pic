@@ -23,7 +23,12 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    files: 50 // 限制最多50个文件
+  }
+});
 
 // 创建阿里云翻译客户端
 const alimt20181012 = require('@alicloud/alimt20181012');
