@@ -1,8 +1,37 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import 'element-plus/dist/index.css'
 import axios from 'axios'
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
+
+// 语言选择
+const sourceLanguage = ref('zh')  // 默认中文
+const targetLanguage = ref('en')    // 默认英语
+
+// 源语言选项（仅支持中文和英文）
+const sourceLanguageOptions = [
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: '英语' }
+]
+
+// 目标语言选项
+const targetLanguageOptions = [
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: '英语' },
+  { value: 'ja', label: '日语' },
+  { value: 'ko', label: '韩语' },
+  { value: 'fr', label: '法语' },
+  { value: 'es', label: '西班牙语' },
+  { value: 'it', label: '意大利语' },
+  { value: 'de', label: '德语' },
+  { value: 'ru', label: '俄语' },
+  { value: 'pt', label: '葡萄牙语' },
+  { value: 'vi', label: '越南语' },
+  { value: 'id', label: '印尼语' },
+  { value: 'th', label: '泰语' },
+  { value: 'ms', label: '马来语' }
+]
 
 const imageList = ref([])
 const translatedImages = ref([])
@@ -51,6 +80,7 @@ const handleFileUpload = async (event) => {
   }
 }
 
+// 修改翻译函数，添加语言参数
 const startTranslation = async () => {
   if (imageList.value.length === 0) {
     ElMessage.warning('请先上传图片')
@@ -65,11 +95,12 @@ const startTranslation = async () => {
 
       image.status = 'translating'
       const response = await axios.post('/api/translate', {
-        imagePath: image.path
+        imagePath: image.path,
+        sourceLanguage: sourceLanguage.value,
+        targetLanguage: targetLanguage.value
       })
 
       if (response.data.success) {
-        // 从返回的数据中正确提取finalImageUrl
         image.translated = response.data.result.body.data.finalImageUrl
         image.status = 'done'
         translatedImages.value.push(image)
@@ -86,32 +117,36 @@ const startTranslation = async () => {
   }
 }
 
-// 在文件顶部添加导入语句
-import JSZip from 'jszip'
-import { saveAs } from 'file-saver'
-
 const downloadAllImages = async () => {
   if (translatedImages.value.length === 0) {
-    ElMessage.warning('没有可下载的翻译图片')
+    ElMessage.warning('没有可下载的翻译结果')
     return
   }
 
   try {
     const zip = new JSZip()
     const promises = translatedImages.value.map(async (image, index) => {
-      const response = await axios.get(image.translated, { responseType: 'arraybuffer' })
-      zip.file(`translated-${index + 1}.jpg`, response.data)
+      const response = await fetch(image.translated)
+      const blob = await response.blob()
+      const fileName = `translated_${index + 1}${getFileExtension(image.name)}`
+      zip.file(fileName, blob)
     })
 
     await Promise.all(promises)
     const content = await zip.generateAsync({ type: 'blob' })
-    saveAs(content, 'translated-images.zip')
-
-    ElMessage.success('翻译后的图片已打包下载')
+    saveAs(content, 'translated_images.zip')
+    ElMessage.success('翻译结果下载成功')
   } catch (error) {
-    ElMessage.error('下载过程出错：' + error.message)
+    ElMessage.error('下载失败：' + error.message)
   }
 }
+
+// 获取文件扩展名的辅助函数
+const getFileExtension = (filename) => {
+  const ext = filename.slice(((filename.lastIndexOf(".") - 1) >>> 0) + 1)
+  return ext ? `.${ext}` : ''
+}
+
 </script>
 
 <template>
@@ -119,6 +154,29 @@ const downloadAllImages = async () => {
     <div class="hero-section">
       <h1 class="title">图片翻译助手</h1>
       <p class="subtitle">轻松翻译图片中的文字，让语言不再是障碍</p>
+    </div>
+
+    <!-- 语言选择组件 -->
+    <div class="language-select" v-if="imageList.length > 0">
+      <div class="select-group">
+        <el-select v-model="sourceLanguage" class="language-selector" placeholder="选择源语言">
+          <el-option
+            v-for="lang in sourceLanguageOptions"
+            :key="lang.value"
+            :label="lang.label"
+            :value="lang.value"
+          />
+        </el-select>
+        <div class="arrow">→</div>
+        <el-select v-model="targetLanguage" class="language-selector" placeholder="选择目标语言">
+          <el-option
+            v-for="lang in targetLanguageOptions"
+            :key="lang.value"
+            :label="lang.label"
+            :value="lang.value"
+          />
+        </el-select>
+      </div>
     </div>
     
     <div class="upload-zone">
@@ -163,19 +221,18 @@ const downloadAllImages = async () => {
         <div class="card-content">
           <div class="image-wrapper original">
             <img :src="image.original" :alt="image.name">
-            <div class="image-label">原始图片</div>
-          </div>
-          <div class="image-wrapper translated" v-if="image.translated">
-            <img :src="image.translated" :alt="'translated-' + image.name">
-            <div class="image-label">翻译结果</div>
-          </div>
-          <div class="status-badge" :class="image.status">
-            {{ 
-              image.status === 'pending' ? '等待翻译' :
-              image.status === 'translating' ? '翻译中...' :
-              image.status === 'done' ? '翻译完成' :
-              image.status === 'error' ? '翻译失败' : ''
-            }}
+            <div class="image-wrapper translated" v-if="image.translated">
+              <img :src="image.translated" :alt="'translated-' + image.name">
+              <div class="image-label">翻译结果</div>
+            </div>
+            <div class="status-badge" :class="image.status">
+              {{ 
+                image.status === 'pending' ? '等待翻译' :
+                image.status === 'translating' ? '翻译中...' :
+                image.status === 'done' ? '翻译完成' :
+                image.status === 'error' ? '翻译失败' : ''
+              }}
+            </div>
           </div>
         </div>
       </div>
@@ -184,6 +241,32 @@ const downloadAllImages = async () => {
 </template>
 
 <style scoped>
+/* 添加语言选择样式 */
+.language-select {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.select-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.language-selector {
+  width: 140px;
+}
+
+.arrow {
+  color: #666;
+  font-size: 20px;
+}
+
 .app-container {
   min-height: 100vh;
   background: #f8f9fa;
@@ -349,3 +432,4 @@ const downloadAllImages = async () => {
   }
 }
 </style>
+

@@ -42,7 +42,7 @@ function createClient() {
   // 设置访问域名
   config.endpoint = 'mt.cn-hangzhou.aliyuncs.com';
   // 设置超时时间（毫秒）
-  config.connectTimeout = 10000; // 连接超时 10 秒
+  config.connectTimeout = 15000; // 连接超时 10 秒
   config.readTimeout = 30000;    // 读取超时 30 秒
   // 设置重试次数
   config.maxAttempts = 3;        // 最多重试 3 次
@@ -74,8 +74,8 @@ app.post('/api/upload', upload.array('images'), (req, res) => {
 // 翻译图片接口
 app.post('/api/translate', async (req, res) => {
   try {
-    const { imagePath } = req.body;
-    console.log(`[${new Date().toISOString()}] 开始翻译图片: ${imagePath}`);
+    const { imagePath, sourceLanguage, targetLanguage } = req.body;
+    console.log(`[${new Date().toISOString()}] 开始翻译图片: ${imagePath}, 源语言: ${sourceLanguage}, 目标语言: ${targetLanguage}`);
     
     const client = createClient();
     console.log(`[${new Date().toISOString()}] 阿里云客户端创建成功`);
@@ -86,8 +86,8 @@ app.post('/api/translate', async (req, res) => {
     console.log(`[${new Date().toISOString()}] 图片转换为Base64完成`);
 
     const translateRequest = new alimt20181012.TranslateImageRequest({
-      sourceLanguage: 'auto',
-      targetLanguage: 'en',
+      sourceLanguage: sourceLanguage,
+      targetLanguage: targetLanguage,
       imageBase64: base64Image,
     });
 
