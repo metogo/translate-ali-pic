@@ -115,22 +115,35 @@ const downloadAllImages = async () => {
 </script>
 
 <template>
-  <div class="container">
-    <h1>图片翻译工具</h1>
+  <div class="app-container">
+    <div class="hero-section">
+      <h1 class="title">图片翻译助手</h1>
+      <p class="subtitle">轻松翻译图片中的文字，让语言不再是障碍</p>
+    </div>
     
-    <div class="upload-section">
+    <div class="upload-zone">
       <input 
         type="file" 
         multiple 
         accept="image/*" 
         @change="handleFileUpload"
         class="file-input"
+        id="file-input"
       >
+      <label for="file-input" class="upload-label">
+        <i class="el-icon-upload"></i>
+        <span>点击或拖拽图片到这里</span>
+        <span class="upload-hint">支持多张图片上传</span>
+      </label>
+    </div>
+
+    <div class="action-buttons" v-if="imageList.length > 0">
       <el-button 
         type="primary" 
         @click="startTranslation"
         :loading="isTranslating"
-        :disabled="imageList.length === 0"
+        round
+        class="action-button"
       >
         {{ isTranslating ? '翻译中...' : '开始翻译' }}
       </el-button>
@@ -138,28 +151,32 @@ const downloadAllImages = async () => {
         type="success" 
         @click="downloadAllImages"
         :disabled="translatedImages.length === 0"
+        round
+        class="action-button"
       >
-        下载全部
+        下载翻译结果
       </el-button>
     </div>
 
-    <div class="image-container">
-      <div v-for="(image, index) in imageList" :key="index" class="image-pair">
-        <div class="image-box">
-          <h3>原始图片</h3>
-          <img :src="image.original" :alt="image.name">
-          <p class="status-text" :class="image.status">
+    <div class="gallery">
+      <div v-for="(image, index) in imageList" :key="index" class="translation-card">
+        <div class="card-content">
+          <div class="image-wrapper original">
+            <img :src="image.original" :alt="image.name">
+            <div class="image-label">原始图片</div>
+          </div>
+          <div class="image-wrapper translated" v-if="image.translated">
+            <img :src="image.translated" :alt="'translated-' + image.name">
+            <div class="image-label">翻译结果</div>
+          </div>
+          <div class="status-badge" :class="image.status">
             {{ 
               image.status === 'pending' ? '等待翻译' :
               image.status === 'translating' ? '翻译中...' :
               image.status === 'done' ? '翻译完成' :
               image.status === 'error' ? '翻译失败' : ''
             }}
-          </p>
-        </div>
-        <div class="image-box" v-if="image.translated">
-          <h3>翻译后</h3>
-          <img :src="image.translated" :alt="'translated-' + image.name">
+          </div>
         </div>
       </div>
     </div>
@@ -167,66 +184,168 @@ const downloadAllImages = async () => {
 </template>
 
 <style scoped>
-.container {
-  max-width: 1200px;
+.app-container {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding: 40px 20px;
+}
+
+.hero-section {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: 2.5rem;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #6c757d;
+  max-width: 600px;
   margin: 0 auto;
-  padding: 20px;
 }
 
-.upload-section {
-  margin: 20px 0;
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.upload-zone {
+  background: white;
+  border: 2px dashed #dee2e6;
+  border-radius: 16px;
+  padding: 40px;
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto 40px;
+  transition: all 0.3s ease;
 }
 
-.image-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.image-pair {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-}
-
-.image-box {
-  flex: 1;
-  max-width: 500px;
-}
-
-.image-box img {
-  width: 100%;
-  height: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.upload-zone:hover {
+  border-color: #4CAF50;
+  background: #f1f8e9;
 }
 
 .file-input {
-  padding: 10px;
+  display: none;
 }
 
-.status-text {
-  text-align: center;
-  margin-top: 8px;
-  font-size: 14px;
+.upload-label {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #6c757d;
 }
 
-.status-text.pending {
-  color: #909399;
+.upload-hint {
+  font-size: 0.9rem;
+  color: #9e9e9e;
 }
 
-.status-text.translating {
-  color: #e6a23c;
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 40px;
 }
 
-.status-text.done {
-  color: #67c23a;
+.action-button {
+  min-width: 140px;
+  height: 44px;
+  font-size: 1.1rem;
 }
 
-.status-text.error {
-  color: #f56c6c;
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.translation-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.translation-card:hover {
+  transform: translateY(-4px);
+}
+
+.card-content {
+  padding: 16px;
+  position: relative;
+}
+
+.image-wrapper {
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.image-wrapper img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.image-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: white;
+}
+
+.status-badge.pending {
+  background: #ffd54f;
+}
+
+.status-badge.translating {
+  background: #2196f3;
+}
+
+.status-badge.done {
+  background: #4caf50;
+}
+
+.status-badge.error {
+  background: #f44336;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .upload-zone {
+    padding: 20px;
+  }
+
+  .gallery {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
 }
 </style>
